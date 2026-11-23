@@ -1,0 +1,14 @@
+1. Execute: 'npm ci' no vscode
+2. Execute: depois 'npm run dev'
+3. Abra: http://localhost:3000
+
+Windows / PowerShell: os comandos são os mesmos, sem variáveis de ambiente no comando.
+Se o PowerShell bloquear npm.ps1, use npm.cmd ci e npm.cmd run dev.
+
+Para conhecer o painel preenchido, entre em Login > Explorar demonstração.
+Para começar vazio, use Criar meu espaço.
+
+A entrega contém o frontend. Os dados ficam no navegador, sem banco ou login real.
+Use dados fictícios. As senhas ainda não são armazenadas nem validadas nesta apresentação.
+O quiz inclui um exemplo pronto. Para usar IA com qualquer texto, configure o serviço descrito em docs/quiz-integracao.md.
+Estudaí+ pode ser experimentado sem cobrança; não há assinatura real.

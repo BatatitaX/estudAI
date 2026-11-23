@@ -1,0 +1,12 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import ts from 'typescript';
+const compile=(text)=>'data:text/javascript;base64,'+Buffer.from(ts.transpileModule(text,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2020}}).outputText).toString('base64');
+const rewardsUrl=compile(readFileSync(new URL('../src/lib/rewards.ts',import.meta.url),'utf8'));
+const source=readFileSync(new URL('../src/lib/social.ts',import.meta.url),'utf8').replace("'./rewards'",JSON.stringify(rewardsUrl));
+const social=await import(compile(source));const r=await import(rewardsUrl);
+const state=()=>({profile:{name:'João',email:'privado@exemplo.com',course:'Matemática'},social:{...social.emptySocial(),id:'student-1'},rewards:r.emptyRewards(),plan:'free'});
+test('Links públicos omitem e-mail privado e de amigos, sem coleções',()=>{for(const visibility of ['private','friends']){const s=state();s.social.emailVisibility=visibility;const p=social.makePublicProfile(s);assert.equal('email' in p,false);assert.equal('collections' in p,false);const decoded=social.decodeProfile(social.encodeProfile(p));assert.equal(decoded.name,'João');assert.equal('email' in decoded,false);}});
+test('E-mail público é explícito; fonte Plus retorna ao padrão sem assinatura',()=>{const s=state();s.social.emailVisibility='everyone';s.rewards.look.nameFont='serif';assert.equal(social.makePublicProfile(s).email,s.profile.email);assert.equal(social.makePublicProfile(s).font,'sans');s.plan='plus';assert.equal(social.makePublicProfile(s).font,'serif');});
+test('Rejeita links inválidos e normaliza configurações antigas',()=>{assert.throws(()=>social.decodeProfile('invalido'));assert.throws(()=>social.parseProfile({name:'X'}));assert.equal(social.normalizeSocial().emailVisibility,'private');const p=social.makePublicProfile(state());p.stats.tasks=-5;p.font='url(unsafe)';const safe=social.parseProfile(p);assert.equal(safe.stats.tasks,0);assert.equal(safe.font,'sans');});

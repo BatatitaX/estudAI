@@ -1,0 +1,11 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import ts from 'typescript';
+const {outputText}=ts.transpileModule(readFileSync(new URL('../src/lib/rewards.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2020}});
+const r=await import('data:text/javascript;base64,'+Buffer.from(outputText).toString('base64'));
+const state=()=>({profile:{name:'A'},rewards:r.emptyRewards(),collections:{tasks:[],sessions:[],cards:[]},quiz:{attempts:[]}});
+test('Conquista permanente; mesma tarefa conta uma vez',()=>{let s=state();s.collections.tasks=[{id:'a',completed:true}];s=r.reconcileRewards(s);assert.ok(s.rewards.unlocked.first);s.collections.tasks=[];s=r.reconcileRewards(s);assert.ok(s.rewards.unlocked.first);s.collections.tasks=[{id:'a',completed:true}];s=r.reconcileRewards(s);assert.equal(r.rewardStats(s.rewards).tasks,1);});
+test('Dias distintos, revisões sem duplicação e apenas quizzes concluídos',()=>{let s=state();s.collections.sessions=[{id:'1',date:'2026-09-20',duration:25}];s.collections.cards=[{id:'c',reviews:50,reviewedAt:'2026-09-21T12:00:00Z'}];s.quiz.attempts=[{id:'q',finished:true,createdAt:'2026-09-22T12:00:00Z'},{id:'q2',finished:false,createdAt:'2026-09-23T12:00:00Z'}];s=r.reconcileRewards(s);s=r.reconcileRewards(s);assert.equal(r.rewardStats(s.rewards).days,3);assert.equal(r.rewardStats(s.rewards).reviews,50);assert.equal(r.rewardStats(s.rewards).quizzes,1);assert.ok(s.rewards.unlocked.sprout);assert.ok(s.rewards.unlocked.memory);assert.equal(r.available({id:'x',unlock:'stars'},s.rewards),false);});
+test('Abrir app não conta; dados antigos recebem configuração inicial',()=>{const s=state();delete s.rewards;assert.equal(r.rewardStats(r.reconcileRewards(s).rewards).days,0);});
+test('Presentes Plus permanecem após cancelamento e recarga',()=>{let s=state();s.plan='plus';s=r.reconcileRewards(s);assert.ok(s.rewards.unlocked['plus-keepsake']);s=JSON.parse(JSON.stringify(s));s.plan='free';s=r.reconcileRewards(s);for(const category of ['border','cover','title']){const item=r.cosmetics[category].find(x=>x.id==='plus-keepsake');assert.ok(r.available(item,s.rewards));assert.equal(r.cosmetics[category].length,16);}assert.equal(r.milestones.length,20);});
